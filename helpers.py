@@ -1,42 +1,72 @@
 import requests
 from bs4 import BeautifulSoup
-
-# il faut récupérer le noms des catégories et les liens
-# resultat de sortie : list de dictionaires
-def get_categories():
-    return []
+from urllib.parse import urljoin
+import csv
+# from time import sleep
 
 
-# retourne une liste avec les liens des détails des livres
+def get_categories(url):
+    categories = []
+
+    r = requests.get(url)
+    if r.ok:
+        soup = BeautifulSoup(r.content, 'html.parser')
+
+        table = soup.find('ul', {'class': 'nav nav-list'}).li.find_all('li')
+        for row in table:
+            categories.append({
+                'title': row.text.strip(),
+                'url': url + row.a['href']
+            })
+
+        # sleep(3)
+
+    return categories
+
+
 def get_books_from_category(url_category):
-    return []
+    books_from_category = []
+
+    r = requests.get(url_category)
+    i = 2
+    while r.ok:
+        soup = BeautifulSoup(r.content, 'html.parser')
+
+        books = soup.find_all('article', {'class': 'product_pod'})
+        for book in books:
+            url_book = urljoin(url_category, book.find('a')['href'])
+            books_from_category.append(url_book)
+
+        url_next = urljoin(url_category, 'page-' + str(i) + '.html')
+        r = requests.get(url_next)
+        i += 1
+
+        # sleep(3)
+
+    return books_from_category
 
 
 def get_book_data(url_book, category):
     book_data = []
-    r = requests.get(url_book)
 
+    r = requests.get(url_book)
     if r.ok:
-        soup = BeautifulSoup(r.text, 'html.parser')
+        soup = BeautifulSoup(r.content, 'html.parser')
 
         title = soup.find('div', {'class': 'product_main'}).h1.text
-        product_description = soup.find('article').find('p', recursive = False).text
+        product_description = soup.find('article').find('p', recursive=False).text
         review_rating = soup.find('p', {'class': 'star-rating'})['class'][1]
+        image_url = urljoin(url_book, soup.find('div', {'class': 'thumbnail'}).img['src'])
 
-        image_url = \
-            url_book.replace('index.html', '') + \
-            soup.find('div', {'class': 'thumbnail'}).img['src']
-
-        table_dictionary = {}
-        table = soup.find('table', {'class': 'table-striped'})
-        rows = table.find_all('tr')
+        table = {}
+        rows = soup.find('table', {'class': 'table-striped'}).find_all('tr')
         for row in rows:
-            table_dictionary[row.th.text] = row.td.text
+            table[row.th.text] = row.td.text
 
-        upc = table_dictionary['UPC']
-        price_including_tax = table_dictionary['Price (incl. tax)']
-        price_excluding_tax = table_dictionary['Price (excl. tax)']
-        number_available = table_dictionary['Availability']
+        upc = table['UPC']
+        price_including_tax = table['Price (incl. tax)']
+        price_excluding_tax = table['Price (excl. tax)']
+        number_available = table['Availability']
 
         book_data = {
             'product page url': url_book,
@@ -50,12 +80,24 @@ def get_book_data(url_book, category):
             'review rating': review_rating,
             'image url': image_url
         }
+        # sleep(3)
 
     return book_data
 
 
-def download_image(url_image, folder_destination):
-    pass
+def write_csv(file_name, data):
+    with open(file_name, 'w') as csv_file:
+        headers = data[0].keys()
+        writer = csv.DictWriter(csv_file, headers, delimiter=';')
+        writer.writeheader()
+        writer.writerows(data)
 
 
-# fonction tourner les pages
+def download_image(url_image, destination):
+    r = requests.get(url_image)
+    if r.ok:
+        file_name = destination
+        with open(file_name, 'wb') as image_file:
+            image_file.write(r.content)
+
+        # sleep(10)
