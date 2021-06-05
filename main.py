@@ -10,27 +10,26 @@ url = 'http://books.toscrape.com/'
 print('getting categories')
 categories = get_categories(url)
 
-i = 1
 for category in categories:
-    print('category ' + str(i))
+    print('\n' + 'getting books from ' + category['title'] + ':')
     books = get_books_from_category(category['url'])
 
-    j = 1
     books_data = []
     for book in books:
-        print(' book ' + str(j))
         books_data.append(get_book_data(book, category['title']))
+        print(' ' + books_data[-1]['title'])
 
-        j += 1
-        # if j > 3:
-        #     break
-
-    print('writing ' + category['title'] + '.csv')
+    print('\n' + 'writing ' + category['title'] + '.csv')
     write_csv(download_dir + category['title'] + '.csv', books_data)
 
+    print('')
+
+    images_dir = download_dir + category['title'] + '/'
+    makedirs(images_dir, exist_ok=True)
+
     for data in books_data:
-        print('downloading ' + data['title'] + '.jpg')
-        download_image(data['image url'], download_dir + data['title'] + '.jpg')
-    i += 1
-    # if i > 2:
-    #     break
+        file_name = data['title'].replace("/", " - ") + ' - ' + \
+                    data['universal product code (upc)'] + '.jpg'
+
+        print('downloading ' + file_name)
+        download_image(data['image url'], images_dir + file_name)

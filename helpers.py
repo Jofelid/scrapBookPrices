@@ -2,7 +2,6 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import csv
-# from time import sleep
 
 
 def get_categories(url):
@@ -18,8 +17,6 @@ def get_categories(url):
                 'title': row.text.strip(),
                 'url': url + row.a['href']
             })
-
-        # sleep(3)
 
     return categories
 
@@ -41,8 +38,6 @@ def get_books_from_category(url_category):
         r = requests.get(url_next)
         i += 1
 
-        # sleep(3)
-
     return books_from_category
 
 
@@ -54,7 +49,9 @@ def get_book_data(url_book, category):
         soup = BeautifulSoup(r.content, 'html.parser')
 
         title = soup.find('div', {'class': 'product_main'}).h1.text
-        product_description = soup.find('article').find('p', recursive=False).text
+        product_description_p = soup.find('article').find('p', recursive=False)
+        product_description = product_description_p.text if product_description_p else ""
+
         review_rating = soup.find('p', {'class': 'star-rating'})['class'][1]
         image_url = urljoin(url_book, soup.find('div', {'class': 'thumbnail'}).img['src'])
 
@@ -80,7 +77,6 @@ def get_book_data(url_book, category):
             'review rating': review_rating,
             'image url': image_url
         }
-        # sleep(3)
 
     return book_data
 
@@ -93,11 +89,8 @@ def write_csv(file_name, data):
         writer.writerows(data)
 
 
-def download_image(url_image, destination):
-    r = requests.get(url_image)
+def download_image(url_image, file_name):
+    r = requests.get(url_image, stream=True)
     if r.ok:
-        file_name = destination
         with open(file_name, 'wb') as image_file:
             image_file.write(r.content)
-
-        # sleep(10)
